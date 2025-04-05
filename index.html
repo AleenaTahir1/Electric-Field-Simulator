@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Field Simulator</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --secondary-color: #FF9800;
+            --success-color: #4CAF50;
+            --danger-color: #f44336;
+            --background-color: #f5f5f5;
+            --card-background: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: var(--card-background);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 300px;
+            position: sticky;
+            top: 20px;
+        }
+
+        #canvas-container {
+            background-color: var(--card-background);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 20px;
+            position: relative;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease;
+            width: 100%;
+            aspect-ratio: 16/9;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+
+        .control-group {
+            background: rgba(0,0,0,0.02);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .coordinates-input {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .coordinates-input label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .coordinates-input input[type="number"] {
+            flex-grow: 1;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-button {
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            border: 1px solid #ddd;
+            background-color: #fff;
+            cursor: crosshair;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            right: 30px;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: var(--card-background);
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .zoom-controls button {
+            padding: 8px 16px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #undo-button {
+            background-color: var(--secondary-color);
+        }
+
+        #undo-button:hover {
+            background-color: #f57c00;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .charge-animation {
+            animation: pulse 0.3s ease-out;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1976D2;
+        }
+
+        .info-panel {
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .probe-list {
+            margin-top: 10px;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .probe-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .probe-item button {
+            padding: 6px 12px;
+            background-color: var(--danger-color);
+            font-size: 12px;
+        }
+
+        /* Classy button styles */
+        .coordinates-input button,
+        #undo-button,
+        button[onclick="clearCanvas()"] {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .coordinates-input button:hover,
+        #undo-button:hover,
+        button[onclick="clearCanvas()"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+            background: linear-gradient(135deg, #1E88E5, #1565C0);
+        }
+
+        .coordinates-input button:active,
+        #undo-button:active,
+        button[onclick="clearCanvas()"]:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+        }
+
+        .coordinates-input button::before,
+        #undo-button::before,
+        button[onclick="clearCanvas()"]::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease-out, height 0.6s ease-out;
+        }
+
+        .coordinates-input button:hover::before,
+        #undo-button:hover::before,
+        button[onclick="clearCanvas()"]:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Special styles for specific buttons */
+        #undo-button {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        #undo-button:hover {
+            background: linear-gradient(135deg, #43A047, #2E7D32);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        button[onclick="clearCanvas()"] {
+            background: linear-gradient(135deg, #F44336, #D32F2F);
+            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+        }
+
+        button[onclick="clearCanvas()"]:hover {
+            background: linear-gradient(135deg, #E53935, #C62828);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1> Electric Field Simulator</h1>
+        <div class="main-content">
+            <div class="controls">
+                <div class="control-group">
+                    <div class="mode-select">
+                        <div class="radio-group">
+                            <label class="radio-button">
+                                <input type="radio" name="mode" value="charge" checked>
+                                <span> Place Charge</span>
+                            </label>
+                            <label class="radio-button">
+                                <input type="radio" name="mode" value="probe">
+                                <span> Probe Field</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="charge-type">
+                        <div class="radio-group">
+                            <label class="radio-button">
+                                <input type="radio" name="chargeType" value="positive" checked>
+                                <span> Positive</span>
+                            </label>
+                            <label class="radio-button">
+                                <input type="radio" name="chargeType" value="negative">
+                                <span> Negative</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="coordinates-input">
+                        <label>X: <input type="number" id="x-coord" step="0.1" placeholder="0.0"></label>
+                        <label>Y: <input type="number" id="y-coord" step="0.1" placeholder="0.0"></label>
+                        <button onclick="placeChargeAtCoord()">Place at Coordinates</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button id="undo-button" onclick="undoLastCharge()"> Undo Last Charge</button>
+                    <button onclick="clearCanvas()"> Clear All</button>
+                </div>
+            </div>
+            <div id="canvas-container">
+                <canvas id="canvas"></canvas>
+                <div class="zoom-controls">
+                    <button onclick="zoom(1.2)">+</button>
+                    <button onclick="zoom(1/1.2)">-</button>
+                </div>
+                <div class="tooltip"></div>
+            </div>
+        </div>
+        <div class="info-panel">
+            <p>Current coordinates: <span id="current-coords">(--, --)</span></p>
+            <h3>Probe Points</h3>
+            <ul class="probe-list" id="probe-list"></ul>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const charges = [];
+        const probePoints = [];
+        const FIELD_LINE_LENGTH = 20;
+        const ARROW_SIZE = 5;
+        
+        // Coordinate system parameters
+        let SCALE = 100; // pixels per unit
+        let ORIGIN_X = 400; // pixels from left
+        let ORIGIN_Y = 300; // pixels from top
+        const MIN_SCALE = 50;
+        const MAX_SCALE = 200;
+        
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth - 40;
+            canvas.height = container.clientHeight - 40;
+            ORIGIN_X = canvas.width / 2;
+            ORIGIN_Y = canvas.height / 2;
+            drawFieldLines();
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Charge {
+            constructor(x, y, magnitude) {
+                this.x = x;
+                this.y = y;
+                this.magnitude = magnitude;
+            }
+        }
+
+        class ProbePoint {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.id = Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+        }
+
+        function zoom(factor) {
+            const newScale = SCALE * factor;
+            if (newScale >= MIN_SCALE && newScale <= MAX_SCALE) {
+                SCALE = newScale;
+                drawFieldLines();
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 0.5;
+            
+            const gridSpacing = SCALE >= 100 ? 0.5 : 1;
+            const xRange = Math.ceil(canvas.width / SCALE);
+            const yRange = Math.ceil(canvas.height / SCALE);
+            
+            for (let x = -xRange; x <= xRange; x += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(ORIGIN_X + x * SCALE, 0);
+                ctx.lineTo(ORIGIN_X + x * SCALE, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = -yRange; y <= yRange; y += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, ORIGIN_Y - y * SCALE);
+                ctx.lineTo(canvas.width, ORIGIN_Y - y * SCALE);
+                ctx.stroke();
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, ORIGIN_Y);
+            ctx.lineTo(canvas.width, ORIGIN_Y);
+            ctx.moveTo(ORIGIN_X, 0);
+            ctx.lineTo(ORIGIN_X, canvas.height);
+            ctx.stroke();
+            
+            // Draw axis labels
+            ctx.fillStyle = '#000';
+            ctx.font = '12px Arial';
+            for (let x = -xRange; x <= xRange; x++) {
+                if (x !== 0) {
+                    ctx.fillText(x.toString(), ORIGIN_X + x * SCALE, ORIGIN_Y + 20);
+                }
+            }
+            for (let y = -yRange; y <= yRange; y++) {
+                if (y !== 0) {
+                    ctx.fillText(y.toString(), ORIGIN_X - 20, ORIGIN_Y - y * SCALE);
+                }
+            }
+        }
+
+        function drawCharge(charge) {
+            const screenX = ORIGIN_X + charge.x * SCALE;
+            const screenY = ORIGIN_Y - charge.y * SCALE;
+            
+            if (charge.isNew) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 20, 0, Math.PI * 2);
+                ctx.fillStyle = charge.magnitude > 0 ? 'rgba(255,0,0,0.2)' : 'rgba(0,0,255,0.2)';
+                ctx.fill();
+                ctx.restore();
+                
+                setTimeout(() => {
+                    charge.isNew = false;
+                    drawFieldLines();
+                }, 300);
+            }
+            
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, 10, 0, Math.PI * 2);
+            ctx.fillStyle = charge.magnitude > 0 ? 'red' : 'blue';
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.stroke();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(charge.magnitude > 0 ? '+' : '-', screenX, screenY);
+        }
+
+        function calculateField(x, y) {
+            let Ex = 0, Ey = 0;
+            for (const charge of charges) {
+                const dx = x - charge.x;
+                const dy = y - charge.y;
+                const r = Math.sqrt(dx * dx + dy * dy);
+                if (r < 0.1) continue;
+                
+                const magnitude = charge.magnitude / (r * r);
+                Ex += magnitude * dx / r;
+                Ey += magnitude * dy / r;
+            }
+            return { Ex, Ey };
+        }
+
+        function drawArrow(fromX, fromY, toX, toY) {
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            
+            ctx.lineTo(
+                toX - ARROW_SIZE * Math.cos(angle - Math.PI / 6),
+                toY - ARROW_SIZE * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(
+                toX - ARROW_SIZE * Math.cos(angle + Math.PI / 6),
+                toY - ARROW_SIZE * Math.sin(angle + Math.PI / 6)
+            );
+            
+            ctx.stroke();
+        }
+
+        function updateProbeList() {
+            const list = document.getElementById('probe-list');
+            list.innerHTML = '';
+            probePoints.forEach((probe, index) => {
+                const field = calculateField(probe.x, probe.y);
+                const magnitude = Math.sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
+                const li = document.createElement('li');
+                li.className = 'probe-item';
+                li.innerHTML = `
+                    <span>Probe ${index + 1} at (${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}) - 
+                    Field: (${field.Ex.toFixed(2)}, ${field.Ey.toFixed(2)})
+                    Magnitude: ${magnitude.toFixed(2)}</span>
+                    <button onclick="removeProbe('${probe.id}')">×</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function removeProbe(id) {
+            const index = probePoints.findIndex(p => p.id === id);
+            if (index !== -1) {
+                probePoints.splice(index, 1);
+                drawFieldLines();
+            }
+        }
+
+        function drawFieldLines() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            
+            const spacing = 40;
+            for (let screenX = 0; screenX < canvas.width; screenX += spacing) {
+                for (let screenY = 0; screenY < canvas.height; screenY += spacing) {
+                    const x = (screenX - ORIGIN_X) / SCALE;
+                    const y = (ORIGIN_Y - screenY) / SCALE;
+                    
+                    const field = calculateField(x, y);
+                    const magnitude = Math.sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
+                    if (magnitude === 0) continue;
+                    
+                    const normalizedEx = field.Ex / magnitude;
+                    const normalizedEy = field.Ey / magnitude;
+                    
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.lineWidth = 1;
+                    drawArrow(screenX, screenY, 
+                             screenX + normalizedEx * FIELD_LINE_LENGTH,
+                             screenY - normalizedEy * FIELD_LINE_LENGTH);
+                }
+            }
+            
+            charges.forEach(drawCharge);
+            
+            probePoints.forEach((probe, index) => {
+                const screenX = ORIGIN_X + probe.x * SCALE;
+                const screenY = ORIGIN_Y - probe.y * SCALE;
+                
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 5, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${index * 137.5 % 360}, 70%, 50%)`;
+                ctx.fill();
+                
+                const field = calculateField(probe.x, probe.y);
+                const magnitude = Math.sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
+                if (magnitude > 0) {
+                    const normalizedEx = field.Ex / magnitude;
+                    const normalizedEy = field.Ey / magnitude;
+                    
+                    ctx.strokeStyle = `hsl(${index * 137.5 % 360}, 70%, 50%)`;
+                    ctx.lineWidth = 2;
+                    drawArrow(screenX, screenY,
+                             screenX + normalizedEx * FIELD_LINE_LENGTH * 1.5,
+                             screenY - normalizedEy * FIELD_LINE_LENGTH * 1.5);
+                }
+            });
+            
+            updateProbeList();
+        }
+
+        function screenToCoord(screenX, screenY) {
+            return {
+                x: (screenX - ORIGIN_X) / SCALE,
+                y: (ORIGIN_Y - screenY) / SCALE
+            };
+        }
+
+        function undoLastCharge() {
+            if (charges.length > 0) {
+                charges.pop();
+                drawFieldLines();
+            }
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const coords = screenToCoord(screenX, screenY);
+            document.getElementById('current-coords').textContent = 
+                `(${coords.x.toFixed(2)}, ${coords.y.toFixed(2)})`;
+
+            // Show field strength in tooltip
+            const field = calculateField(coords.x, coords.y);
+            const magnitude = Math.sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
+            
+            const tooltip = document.querySelector('.tooltip');
+            tooltip.style.left = (e.clientX + 10) + 'px';
+            tooltip.style.top = (e.clientY + 10) + 'px';
+            tooltip.textContent = `Field Strength: ${magnitude.toFixed(2)}`;
+            tooltip.style.opacity = '1';
+        });
+
+        canvas.addEventListener('mouseout', () => {
+            const tooltip = document.querySelector('.tooltip');
+            tooltip.style.opacity = '0';
+        });
+
+        // Enhance charge placement
+        function addCharge(x, y, magnitude) {
+            const charge = new Charge(x, y, magnitude);
+            charge.isNew = true;
+            charges.push(charge);
+            drawFieldLines();
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const coords = screenToCoord(screenX, screenY);
+            
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            
+            if (mode === 'charge') {
+                const magnitude = document.querySelector('input[name="chargeType"]:checked').value === 'positive' ? 1 : -1;
+                addCharge(coords.x, coords.y, magnitude);
+            } else if (mode === 'probe') {
+                probePoints.push(new ProbePoint(coords.x, coords.y));
+                drawFieldLines();
+            }
+        });
+
+        // Make buttons more responsive
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.95)';
+            });
+            
+            button.addEventListener('mouseup', () => {
+                button.style.transform = '';
+            });
+        });
+
+        function placeChargeAtCoord() {
+            const x = parseFloat(document.getElementById('x-coord').value);
+            const y = parseFloat(document.getElementById('y-coord').value);
+            
+            if (!isNaN(x) && !isNaN(y)) {
+                const magnitude = document.querySelector('input[name="chargeType"]:checked').value === 'positive' ? 1 : -1;
+                addCharge(x, y, magnitude);
+            }
+        }
+
+        function clearCanvas() {
+            charges.length = 0;
+            probePoints.length = 0;
+            drawFieldLines();
+        }
+
+        // Pan functionality
+        let isPanning = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1) { // Middle mouse button
+                isPanning = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                canvas.style.cursor = 'move';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                ORIGIN_X += dx;
+                ORIGIN_Y += dy;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                drawFieldLines();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+            canvas.style.cursor = 'crosshair';
+        });
+
+        // Initial draw
+        drawFieldLines();
+    </script>
+</body>
+</html>
