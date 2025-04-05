@@ -92,7 +92,6 @@ Built with:
 ## 👥 Contributors
 
 - [Aleena Tahir](https://github.com/AleenaTahir1)
-- [Saqlain Abbas](https://github.com/Razee4315)
 
 ## 📄 License
 
@@ -106,4 +105,4 @@ Special thanks to:
 - All contributors and testers
 
 ---
-Made with ❤️ by Aleena Tahir & Saqlain Abbas
+Made with ❤️ by Aleena Tahir
