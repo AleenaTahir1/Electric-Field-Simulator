@@ -205,36 +205,69 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
 
-        .probe-list {
-            margin-top: 10px;
-            padding-left: 0;
-            list-style: none;
+        .probe-points {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         .probe-item {
+            background: white;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
             animation: slideIn 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        .probe-item span {
+            font-size: 14px;
+            color: #333;
         }
 
-        .probe-item button {
-            padding: 6px 12px;
-            background-color: var(--danger-color);
-            font-size: 12px;
+        .remove-probe {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .remove-probe:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        #probe-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        #probe-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #probe-list::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 3px;
+        }
+
+        #probe-list::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
         }
 
         /* Classy button styles */
@@ -371,8 +404,10 @@
         </div>
         <div class="info-panel">
             <p>Current coordinates: <span id="current-coords">(--, --)</span></p>
-            <h3>Probe Points</h3>
-            <ul class="probe-list" id="probe-list"></ul>
+            <div class="probe-points">
+                <h3>Probe Points</h3>
+                <div id="probe-list"></div>
+            </div>
         </div>
     </div>
     <script>
@@ -540,30 +575,33 @@
         }
 
         function updateProbeList() {
-            const list = document.getElementById('probe-list');
-            list.innerHTML = '';
-            probePoints.forEach((probe, index) => {
-                const field = calculateField(probe.x, probe.y);
+            const probeList = document.getElementById('probe-list');
+            probeList.innerHTML = '';
+            probePoints.forEach((point, index) => {
+                const field = calculateField(point.x, point.y);
                 const magnitude = Math.sqrt(field.Ex * field.Ex + field.Ey * field.Ey);
-                const li = document.createElement('li');
-                li.className = 'probe-item';
-                li.innerHTML = `
-                    <span>Probe ${index + 1} at (${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}) - 
-                    Field: (${field.Ex.toFixed(2)}, ${field.Ey.toFixed(2)})
-                    Magnitude: ${magnitude.toFixed(2)}</span>
-                    <button onclick="removeProbe('${probe.id}')">×</button>
+                const div = document.createElement('div');
+                div.className = 'probe-item';
+                div.innerHTML = `
+                    <span>Probe ${index + 1} at (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) - Field: (${field.Ex.toFixed(2)}, ${field.Ey.toFixed(2)}) Magnitude: ${magnitude.toFixed(2)}</span>
+                    <button onclick="removeProbePoint(${index})" class="remove-probe">×</button>
                 `;
-                list.appendChild(li);
+                probeList.appendChild(div);
             });
         }
 
-        function removeProbe(id) {
-            const index = probePoints.findIndex(p => p.id === id);
-            if (index !== -1) {
-                probePoints.splice(index, 1);
-                drawFieldLines();
-            }
+        function removeProbePoint(index) {
+            probePoints.splice(index, 1);
+            drawFieldLines();
+            updateProbeList();
         }
+
+        // Update drawFieldLines to call updateProbeList
+        const originalDrawFieldLines = drawFieldLines;
+        drawFieldLines = function() {
+            originalDrawFieldLines();
+            updateProbeList();
+        };
 
         function drawFieldLines() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -614,8 +652,6 @@
                              screenY - normalizedEy * FIELD_LINE_LENGTH * 1.5);
                 }
             });
-            
-            updateProbeList();
         }
 
         function screenToCoord(screenX, screenY) {
